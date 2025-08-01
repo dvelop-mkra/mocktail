@@ -125,7 +125,7 @@ func (s Syrup) mockedMethod(writer io.Writer) error {
 	params := s.Signature.Params()
 
 	var argNames []string
-	for i := 0; i < params.Len(); i++ {
+	for i := range params.Len() {
 		param := params.At(i)
 
 		if param.Type().String() == contextType {
@@ -151,7 +151,7 @@ func (s Syrup) mockedMethod(writer io.Writer) error {
 		w.Print("(")
 	}
 
-	for i := 0; i < results.Len(); i++ {
+	for i := range results.Len() {
 		w.Print(s.getTypeName(results.At(i).Type(), false))
 		if i+1 < results.Len() {
 			w.Print(", ")
@@ -172,7 +172,7 @@ func (s Syrup) mockedMethod(writer io.Writer) error {
 
 	s.writeReturnsFnCaller(w, argNames, params, results)
 
-	for i := 0; i < results.Len(); i++ {
+	for i := range results.Len() {
 		if i == 0 {
 			w.Println()
 		}
@@ -190,7 +190,7 @@ func (s Syrup) mockedMethod(writer io.Writer) error {
 		}
 	}
 
-	for i := 0; i < results.Len(); i++ {
+	for i := range results.Len() {
 		if i == 0 {
 			w.Println()
 			w.Print("\treturn ")
@@ -232,7 +232,7 @@ func (s Syrup) methodOn(writer io.Writer) error {
 	params := s.Signature.Params()
 
 	var argNames []string
-	for i := 0; i < params.Len(); i++ {
+	for i := range params.Len() {
 		param := params.At(i)
 
 		if param.Type().String() == contextType {
@@ -276,7 +276,7 @@ func (s Syrup) methodOnRaw(writer io.Writer) error {
 	params := s.Signature.Params()
 
 	var argNames []string
-	for i := 0; i < params.Len(); i++ {
+	for i := range params.Len() {
 		param := params.At(i)
 
 		if param.Type().String() == contextType {
@@ -369,7 +369,7 @@ func (s Syrup) typedReturns(writer io.Writer) error {
 	w.Printf("func (_c *%s%sCall) TypedReturns(", s.InterfaceName, s.Method.Name())
 
 	var returnNames string
-	for i := 0; i < results.Len(); i++ {
+	for i := range results.Len() {
 		rName := string(rune(int('a') + i))
 
 		w.Printf("%s %s", rName, s.getTypeName(results.At(i).Type(), false))
@@ -401,7 +401,7 @@ func (s Syrup) typedRun(writer io.Writer) error {
 
 	var pos int
 	var paramNames []string
-	for i := 0; i < params.Len(); i++ {
+	for i := range params.Len() {
 		param := params.At(i)
 		pType := param.Type()
 
@@ -470,7 +470,7 @@ func (s Syrup) callMethodsOn(writer io.Writer, methods []*types.Func) error {
 		params := sign.Params()
 
 		var argNames []string
-		for i := 0; i < params.Len(); i++ {
+		for i := range params.Len() {
 			param := params.At(i)
 
 			if param.Type().String() == contextType {
@@ -516,7 +516,7 @@ func (s Syrup) callMethodOnRaw(writer io.Writer, methods []*types.Func) error {
 		params := sign.Params()
 
 		var argNames []string
-		for i := 0; i < params.Len(); i++ {
+		for i := range params.Len() {
 			param := params.At(i)
 
 			if param.Type().String() == contextType {
@@ -584,6 +584,9 @@ func (s Syrup) getTypeName(t types.Type, last bool) string {
 	case *types.Chan:
 		return s.getChanTypeName(v)
 
+	case *types.Array:
+		return fmt.Sprintf("[%d]%s", v.Len(), s.getTypeName(v.Elem(), false))
+
 	default:
 		panic(fmt.Sprintf("OOPS %[1]T %[1]s", t))
 	}
@@ -591,7 +594,7 @@ func (s Syrup) getTypeName(t types.Type, last bool) string {
 
 func (s Syrup) getTupleTypes(t *types.Tuple) []string {
 	var tupleTypes []string
-	for i := 0; i < t.Len(); i++ {
+	for i := range t.Len() {
 		param := t.At(i)
 
 		tupleTypes = append(tupleTypes, s.getTypeName(param.Type(), false))
@@ -601,6 +604,13 @@ func (s Syrup) getTupleTypes(t *types.Tuple) []string {
 }
 
 func (s Syrup) getNamedTypeName(t *types.Named) string {
+	if t.Obj() != nil && t.Obj().Pkg() != nil {
+		if t.Obj().Pkg().Path() == s.PkgPath {
+			return t.Obj().Name()
+		}
+		return t.Obj().Pkg().Name() + "." + t.Obj().Name()
+	}
+
 	name := t.String()
 
 	// Parse generic parameters.
@@ -627,14 +637,6 @@ func (s Syrup) getNamedTypeName(t *types.Named) string {
 	if i > -1 {
 		name = name[i+1:]
 	}
-
-	if t.Obj() != nil && t.Obj().Pkg() != nil {
-		if t.Obj().Pkg().Path() == s.PkgPath {
-			i := strings.Index(name, ".")
-			return name[i+1:]
-		}
-	}
-
 	return name
 }
 
@@ -654,7 +656,7 @@ func (s Syrup) getChanTypeName(t *types.Chan) string {
 
 func (s Syrup) createFuncSignature(params, results *types.Tuple) string {
 	fnSign := "func("
-	for i := 0; i < params.Len(); i++ {
+	for i := range params.Len() {
 		param := params.At(i)
 		if param.Type().String() == contextType {
 			continue
@@ -670,7 +672,7 @@ func (s Syrup) createFuncSignature(params, results *types.Tuple) string {
 
 	if results != nil {
 		fnSign += "("
-		for i := 0; i < results.Len(); i++ {
+		for i := range results.Len() {
 			rType := results.At(i).Type()
 			fnSign += s.getTypeName(rType, false)
 			if i+1 < results.Len() {

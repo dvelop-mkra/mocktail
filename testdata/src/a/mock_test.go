@@ -11,6 +11,7 @@ import (
 // mocktail:b.Carrot
 // mocktail-:fmt.Stringer
 // mocktail:Orange
+// mocktail:d.Cherry
 
 func TestName(t *testing.T) {
 	var s Pineapple = newPineappleMock(t).
@@ -33,10 +34,14 @@ func TestName(t *testing.T) {
 	var c Coconut = newCoconutMock(t).
 		OnLoo("a", 1, 2).TypedReturns("foo").Once().
 		OnMoo(fn).TypedReturns("").Once().
+		OnNoo([][2]string{{"a", "b"}}).TypedReturns("").
+		OnPoo(struct{ name string }{name: "poo"}).TypedReturns("").Once().
 		Parent
 
 	c.Loo("a", 1, 2)
 	c.Moo(fn)
+	c.Noo([][2]string{{"a", "b"}})
+	c.Poo(struct{ name string }{name: "poo"})
 
 	juiceCh := make(chan struct{}, 1)
 	juiceCh <- struct{}{}

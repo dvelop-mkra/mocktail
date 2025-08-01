@@ -30,6 +30,8 @@ type Coconut interface {
 	Yoo(st string) interface{}
 	Zoo(st interface{}) string
 	Moo(fn func(st, stban Strawberry) Pineapple) string
+	Noo(ar [][2]string) string
+	Poo(str struct{ name string }) string
 }
 
 type Water struct{}

@@ -1,7 +1,5 @@
 run:
   timeout: 10m
-  skip-files: [ 'temp.go' ]
-  skip-dirs: [ ]
 
 linters-settings:
   govet:
@@ -24,11 +22,13 @@ linters-settings:
   gofumpt:
     extra-rules: true
   depguard:
-    list-type: blacklist
-    include-go-root: false
-    packages:
-      - github.com/sirupsen/logrus
-      - github.com/pkg/errors
+    rules:
+      main:
+        deny:
+          - pkg: "github.com/instana/testify"
+            desc: not allowed
+          - pkg: "github.com/pkg/errors"
+            desc: Should be replaced by standard lib errors package
   gocritic:
     enabled-tags:
       - diagnostic
@@ -53,17 +53,7 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - scopelint # deprecated
-    - interfacer # deprecated
-    - maligned # deprecated
-    - golint # deprecated
-    - exhaustivestruct # deprecated
-    - scopelint # deprecated
-    - varcheck # deprecated
-    - structcheck # deprecated
-    - nosnakecase # deprecated
-    - deadcode # deprecated
-    - ifshort # deprecated
+    - exportloopref # deprecated
     - sqlclosecheck # not relevant (SQL)
     - rowserrcheck # not relevant (SQL)
     - cyclop # duplicate of gocyclo
@@ -71,8 +61,8 @@ linters:
     - dupl
     - wsl
     - nlreturn
-    - gomnd
-    - goerr113
+    - mnd
+    - err113
     - wrapcheck
     - exhaustive
     - exhaustruct
@@ -90,10 +80,15 @@ linters:
 
 issues:
   exclude-use-default: false
-  max-per-linter: 0
+  max-issues-per-linter: 0
   max-same-issues: 0
+  exclude:
+    - 'fmt.Sprintf can be replaced with string'
   exclude-rules:
     - path: .*_test.go
       linters:
         - funlen
         - noctx
+
+output:
+  show-stats: true

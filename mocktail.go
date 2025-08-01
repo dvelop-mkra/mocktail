@@ -7,8 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
-	"go/importer"
-	"go/token"
 	"go/types"
 	"io/fs"
 	"log"
@@ -18,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/ettle/strcase"
+
+	"golang.org/x/tools/go/packages"
 )
 
 const (
@@ -80,8 +80,6 @@ func main() {
 func walk(root, moduleName string) (map[string]PackageDesc, error) {
 	model := make(map[string]PackageDesc)
 
-	importR := importer.ForCompiler(token.NewFileSet(), "source", nil)
-
 	err := filepath.WalkDir(root, func(fp string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -134,12 +132,19 @@ func walk(root, moduleName string) (map[string]PackageDesc, error) {
 				importPath = path.Join(moduleName, filePkgName)
 			}
 
-			pkg, err := importR.Import(importPath)
+			pkgs, err := packages.Load(
+				&packages.Config{
+					Mode: packages.NeedTypes,
+					Dir:  root,
+				},
+				importPath,
+			)
 			if err != nil {
-				return fmt.Errorf("failed to import %q: %w", importPath, err)
+				return fmt.Errorf("load package %q: %w", importPath, err)
 			}
 
-			lookup := pkg.Scope().Lookup(interfaceName)
+			// Only one package specified by the import path has been loaded.
+			lookup := pkgs[0].Types.Scope().Lookup(interfaceName)
 			if lookup == nil {
 				log.Printf("Unable to find: %s", interfaceName)
 				continue
@@ -156,7 +161,7 @@ func walk(root, moduleName string) (map[string]PackageDesc, error) {
 				return fmt.Errorf("type %q in %q is not an interface", lookup.Type(), fp)
 			}
 
-			for i := 0; i < interfaceType.NumMethods(); i++ {
+			for i := range interfaceType.NumMethods() {
 				method := interfaceType.Method(i)
 
 				interfaceDesc.Methods = append(interfaceDesc.Methods, method)
@@ -200,7 +205,7 @@ func getTupleImports(tuples ...*types.Tuple) []string {
 	var imports []string
 
 	for _, tuple := range tuples {
-		for i := 0; i < tuple.Len(); i++ {
+		for i := range tuple.Len() {
 			imports = append(imports, getTypeImports(tuple.At(i).Type())...)
 		}
 	}
@@ -215,6 +220,16 @@ func getTypeImports(t types.Type) []string {
 
 	case *types.Slice:
 		return getTypeImports(v.Elem())
+
+	case *types.Array:
+		return getTypeImports(v.Elem())
+
+	case *types.Struct:
+		var imports []string
+		for i := range v.NumFields() {
+			imports = append(imports, getTypeImports(v.Field(i).Type())...)
+		}
+		return imports
 
 	case *types.Map:
 		imports := getTypeImports(v.Key())
